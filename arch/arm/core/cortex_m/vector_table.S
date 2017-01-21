@@ -70,9 +70,9 @@ SECTION_SUBSEC_FUNC(exc_vector_table,_vector_table_section,__start)
 #error Unknown ARM architecture
 #endif /* CONFIG_ARMV6_M */
     .word __reserved
-    .word __pendsv
+    .word pendsv
 #if defined(CONFIG_CORTEX_M_SYSTICK)
-    .word _timer_int_handler
+    .word SysTick_Handler
 #else
     .word __reserved
 #endif

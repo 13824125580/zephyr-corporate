@@ -25,6 +25,9 @@ _ASM_FILE_PROLOGUE
 
 GTEXT(_ExcExit)
 GTEXT(_IntExit)
+GTEXT(SetPendSVPro)
+GTEXT(TriggerPendSV)
+GTEXT(__set_PSP)
 GDATA(_kernel)
 
 /**
@@ -52,6 +55,22 @@ GDATA(_kernel)
  *
  * @return N/A
  */
+SECTION_SUBSEC_FUNC(TEXT, _HandlerModeExit, __set_PSP)
+   msr psp, r0
+   bx lr
+
+SECTION_SUBSEC_FUNC(TEXT, _HandlerModeExit, SetPendSVPro)
+   ldr r0, =0xE000ED22
+   ldr r1, =0xff 
+   strb r1, [r0]
+   bx lr
+
+SECTION_SUBSEC_FUNC(TEXT, _HandlerModeExit, TriggerPendSV)
+   ldr r0, =0xE000ED04
+   ldr r1, =0x10000000
+   str r1, [r0]
+   bx lr
+
 
 SECTION_SUBSEC_FUNC(TEXT, _HandlerModeExit, _IntExit)
 

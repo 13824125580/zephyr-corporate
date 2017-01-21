@@ -146,6 +146,51 @@ void _bss_zero(void)
 }
 
 
+unsigned int  curr_task=0;     // 当前执行任务
+unsigned int *pcurr_task = &curr_task;
+unsigned int  next_task=1;     // 下一个任务
+unsigned int *pnext_task = &next_task;
+unsigned int  task0_stack[1024];
+unsigned int  task1_stack[1024];
+unsigned int  PSP_array[4];
+unsigned int *pPSP_arrary = PSP_array;
+
+unsigned char task0_handle=1;
+unsigned char task1_handle=1;
+
+void task0(void) 
+{ 
+    while(1)
+    {
+	printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+	if(task0_handle==1)
+	{
+		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		task0_handle=0;
+		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		task1_handle=1;
+		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+	}
+    }
+}
+
+void task1(void)
+{
+	while(1)
+        {
+		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		if(task1_handle==1)
+		{
+			printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+			task1_handle=0;
+			printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+			task0_handle=1;
+			printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		}
+	}
+}
+
+
 #ifdef CONFIG_XIP
 /**
  *
@@ -162,6 +207,24 @@ void _data_copy(void)
 }
 #endif
 
+void test_printk(unsigned int r0, unsigned int r1, unsigned r2, unsigned int r3)
+{
+	printk("%s line %d.r0 = 0x%08x, r1 = 0x%08x, r2 = 0x%08x, r3 = 0x%08x. pcurr_task = %p, pnext_task = %p, PSP_arrary=%p \n",
+			__func__, __LINE__, r0, r1, r2, r3, pcurr_task, pnext_task, PSP_array);
+}
+
+extern void TriggerPendSV();
+void SysTick_Handler(void)
+{
+	if(curr_task==0)
+	        next_task=1;
+        else
+	        next_task=0;
+	/*printk("%s line %d. next_task = %d.\n", __func__, __LINE__, next_task);*/
+	TriggerPendSV();
+	printk("%s line %d. next_task = %d.\n", __func__, __LINE__, next_task);
+}
+
 /**
  *
  * @brief Mainline for kernel's background task
@@ -171,11 +234,15 @@ void _data_copy(void)
  *
  * @return N/A
  */
+#define HW32_REG(addr) (*(volatile unsigned int*)addr)
 static void _main(void *unused1, void *unused2, void *unused3)
 {
 	ARG_UNUSED(unused1);
 	ARG_UNUSED(unused2);
 	ARG_UNUSED(unused3);
+	pPSP_arrary = PSP_array;
+	pnext_task = &next_task;
+	pcurr_task = &curr_task;
 
 	_sys_device_do_config_level(_SYS_INIT_LEVEL_POST_KERNEL);
 
@@ -203,7 +270,28 @@ static void _main(void *unused1, void *unused2, void *unused3)
 
 	__main_tsc = _tsc_read();
 #endif
+	PSP_array[0] = ((unsigned int) task0_stack) + (sizeof task0_stack) - 16*4;
+	HW32_REG((PSP_array[0] + (14<<2))) = (unsigned int) task0;
+	HW32_REG((PSP_array[0] + (15<<2))) = 0x01000000;
 
+	PSP_array[1] = ((unsigned int) task1_stack) + (sizeof task1_stack) - 16*4;
+	HW32_REG((PSP_array[1] + (14<<2))) = (unsigned long) task1;
+	HW32_REG((PSP_array[1] + (15<<2))) = 0x01000000;
+	printk("psp1 = 0x%08x, psp[2] = 0x%08x.\n", PSP_array[0], PSP_array[1]);
+
+	curr_task = 0;
+
+	extern void __set_PSP(unsigned int);
+	/*__set_PSP((PSP_array[curr_task] + 16*4));*/
+
+	extern void SetPendSVPro();
+	SetPendSVPro();
+	/*set_control(3);*/
+	 __asm(" isb     ");
+
+	task0();
+
+	while(1);
 	extern void main(void);
 
 	/* If we're going to load the MDEF main() in this context, we need

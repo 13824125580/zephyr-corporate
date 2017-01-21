@@ -29,6 +29,8 @@ GTEXT(__svc)
 #error Unknown ARM architecture
 #endif /* CONFIG_ARMV6_M */
 GTEXT(__pendsv)
+GTEXT(pendsv)
+GTEXT(set_control)
 GDATA(_k_neg_eagain)
 
 GDATA(_kernel)
@@ -45,6 +47,31 @@ GDATA(_kernel)
  * already been taken. In other words, when __pendsv() runs, we *know* we have
  * to swap *something*.
  */
+SECTION_FUNC(TEXT, pendsv)
+	mrs r0, psp
+	stmdb r0!, {r4-r11}
+
+	ldr r1, =pPSP_arrary
+	ldr r1, [r1]
+	ldr r2, =[curr_task]
+	ldr r2,[r2]
+	str r0, [r1, r2, lsl #2]
+
+	ldr r1, =curr_task
+	ldr r3, =pPSP_arrary
+	ldr r3, [r3]
+	ldr r4, =next_task
+	ldr r4, [r4]
+	str r4, [r1]  	
+	ldr r0, [r3, r4, lsl #2]
+	ldmia r0!, {r4-r11}
+	msr psp, r0
+	bx lr
+
+
+SECTION_FUNC(TEXT, set_control)
+	msr control, r0
+	bx lr
 
 SECTION_FUNC(TEXT, __pendsv)
 
