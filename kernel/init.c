@@ -157,6 +157,7 @@ unsigned int *pPSP_arrary = PSP_array;
 
 unsigned char task0_handle=1;
 unsigned char task1_handle=1;
+unsigned int dumy[20];
 unsigned int adr1[20];
 unsigned int adr2[20];
 void task_switch(unsigned int, unsigned int);
@@ -164,10 +165,6 @@ void task1(void);
 
 void task0(void) 
 { 
-
-    adr2[10] = (unsigned int) task1;
-    adr2[9] = (unsigned int) &task1_stack[1000];
-    adr2[11] = 0x01000000;
 
     while(1)
     {
@@ -307,8 +304,15 @@ static void _main(void *unused1, void *unused2, void *unused3)
 	/*set_control(3);*/
 	 __asm(" isb     ");
 
-	task0();
+	adr1[9] = (unsigned int) &task0_stack[1000];
+	adr1[10] = (unsigned int) task0;
+	adr1[11] = 0x01000000;
 
+    	adr2[9] = (unsigned int) &task1_stack[1000];
+    	adr2[10] = (unsigned int) task1;
+    	adr2[11] = 0x01000000;
+
+	task_switch(dumy, adr1);
 	while(1);
 	extern void main(void);
 
