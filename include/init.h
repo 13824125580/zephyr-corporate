@@ -96,6 +96,30 @@ extern "C" {
 	DEVICE_DEFINE(_SYS_NAME(init_fn), drv_name, init_fn, pm_control_fn, \
 		      NULL, NULL, level, prio, NULL)
 
+
+typedef struct stackreg
+{
+	unsigned int r4;
+	unsigned int r5;
+	unsigned int r6;
+	unsigned int r7;
+	unsigned int r8;
+	unsigned int r9;
+	unsigned int r10;
+	unsigned int r11;
+	unsigned int r12;
+	unsigned int r13;
+	unsigned int r14;
+	unsigned int xpsr;
+
+
+}STACKREG;
+
+typedef struct w_tcb
+{
+	STACKREG strStackReg;
+}W_TCB;
+typedef void (*VFUNC)(void);
 #ifdef __cplusplus
 }
 #endif

@@ -161,9 +161,11 @@ unsigned int dumy[20];
 unsigned int adr1[20];
 unsigned int adr2[20];
 void task_switch(unsigned int, unsigned int);
-void task1(void);
+void task1(void*);
 
-void task0(void) 
+extern W_TCB *gpstrTask1Tcb;
+extern W_TCB *gpstrTask2Tcb;
+void task0(void* p) 
 { 
 
     while(1)
@@ -179,11 +181,11 @@ void task0(void)
 	 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
 	 *}
 	 */
-	task_switch(adr1, adr2);
+	task_switch(&gpstrTask1Tcb->strStackReg, &gpstrTask2Tcb->strStackReg);
     }
 }
 
-void task1(void)
+void task1(void* p)
 {
 	while(1)
         {
@@ -198,7 +200,7 @@ void task1(void)
 		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
 		 *}
 		 */
-		task_switch(adr2, adr1);
+		task_switch(&gpstrTask2Tcb->strStackReg, &gpstrTask1Tcb->strStackReg);
 	}
 }
 
@@ -240,6 +242,46 @@ void SysTick_Handler(void)
 	printk("%s line %d. next_task = %d.\n", __func__, __LINE__, next_task);
 }
 
+#define TASKSTACK  1024
+W_TCB *gpstrTask1Tcb;
+W_TCB *gpstrTask2Tcb;
+unsigned int gauiTask1Stack[TASKSTACK];
+unsigned int gauiTask2Stack[TASKSTACK];
+unsigned int * TEST_GetTaskInitSp(unsigned char task)
+{
+	if(1 == task)
+	{
+		return gauiTask1Stack + TASKSTACK;
+	}
+	else
+	{
+		return gauiTask2Stack + TASKSTACK;
+	}
+}
+  
+W_TCB *WLX_TaskInit(VFUNC vfFuncPointer, unsigned int *puiTaskStack)
+{
+	W_TCB *pstrTcb;
+	STACKREG *pstrStackReg;
+
+	pstrTcb = (W_TCB*)((unsigned int)puiTaskStack - sizeof(W_TCB));
+
+	pstrStackReg = &pstrTcb->strStackReg;
+	pstrStackReg->r4 = 0;
+	pstrStackReg->r5 = 0;
+	pstrStackReg->r6 = 0;
+	pstrStackReg->r7 = 0;
+	pstrStackReg->r8 = 0;
+	pstrStackReg->r9 = 0;
+	pstrStackReg->r10 = 0;
+	pstrStackReg->r11 = 0;
+	pstrStackReg->r12 = 0;
+	pstrStackReg->r13 = (unsigned int)pstrTcb;
+	pstrStackReg->r14 = (unsigned int)vfFuncPointer;
+	pstrStackReg->xpsr = 0x01000000;
+
+	return pstrStackReg;
+}
 /**
  *
  * @brief Mainline for kernel's background task
@@ -304,15 +346,22 @@ static void _main(void *unused1, void *unused2, void *unused3)
 	/*set_control(3);*/
 	 __asm(" isb     ");
 
-	adr1[9] = (unsigned int) &task0_stack[1000];
-	adr1[10] = (unsigned int) task0;
-	adr1[11] = 0x01000000;
+/*
+ *        adr1[9] = (unsigned int) &task0_stack[1000];
+ *        adr1[10] = (unsigned int) task0;
+ *        adr1[11] = 0x01000000;
+ *
+ *    	adr2[9] = (unsigned int) &task1_stack[1000];
+ *    	adr2[10] = (unsigned int) task1;
+ *    	adr2[11] = 0x01000000;
+ *
+ *        task_switch(dumy, adr1);
+ */
 
-    	adr2[9] = (unsigned int) &task1_stack[1000];
-    	adr2[10] = (unsigned int) task1;
-    	adr2[11] = 0x01000000;
+	 gpstrTask1Tcb = WLX_TaskInit(task0, TEST_GetTaskInitSp(1));
+	 gpstrTask2Tcb = WLX_TaskInit(task1, TEST_GetTaskInitSp(2));
 
-	task_switch(dumy, adr1);
+	 switch2task(&gpstrTask1Tcb->strStackReg);
 	while(1);
 	extern void main(void);
 

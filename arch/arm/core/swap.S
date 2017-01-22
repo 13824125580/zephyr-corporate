@@ -32,6 +32,7 @@ GTEXT(__pendsv)
 GTEXT(pendsv)
 GTEXT(set_control)
 GTEXT(task_switch)
+GTEXT(switch2task)
 GDATA(_k_neg_eagain)
 
 GDATA(_kernel)
@@ -85,6 +86,16 @@ SECTION_FUNC(TEXT, task_switch)
 	msr   xpsr, r0
 	sub   r1, #4
 	ldmia r1, {pc}
+
+SECTION_FUNC(TEXT, switch2task)
+	ldmia r0!, {r4-r12}
+	ldmia r0, {r2}
+	msr   psp, r2
+	add   r0, #8
+	ldmia r0, {r1}
+	msr   xpsr, r1
+	sub   r0, #4
+	ldmia r0, {pc}
 
 SECTION_FUNC(TEXT, set_control)
 	msr control, r0
