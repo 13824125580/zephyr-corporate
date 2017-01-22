@@ -31,6 +31,7 @@ GTEXT(__svc)
 GTEXT(__pendsv)
 GTEXT(pendsv)
 GTEXT(set_control)
+GTEXT(task_switch)
 GDATA(_k_neg_eagain)
 
 GDATA(_kernel)
@@ -68,6 +69,22 @@ SECTION_FUNC(TEXT, pendsv)
 	msr psp, r0
 	bx lr
 
+SECTION_FUNC(TEXT, task_switch)
+	stmia r0!, {r4-r12}
+	mrs  r2,  psp
+	stmia r0!, {r2} 
+	stmia r0!, {r14}
+	mrs   r2, xpsr
+	stmia r0, {r2}
+
+	ldmia r1!, {r4-r12}
+	ldmia r1, {r2}
+	msr   psp, r2
+	add   r1, #8
+	ldmia r1, {r0}
+	msr   xpsr, r0
+	sub   r1, #4
+	ldmia r1, {pc}
 
 SECTION_FUNC(TEXT, set_control)
 	msr control, r0

@@ -157,20 +157,32 @@ unsigned int *pPSP_arrary = PSP_array;
 
 unsigned char task0_handle=1;
 unsigned char task1_handle=1;
+unsigned int adr1[20];
+unsigned int adr2[20];
+void task_switch(unsigned int, unsigned int);
+void task1(void);
 
 void task0(void) 
 { 
+
+    adr2[10] = (unsigned int) task1;
+    adr2[9] = (unsigned int) &task1_stack[1000];
+    adr2[11] = 0x01000000;
+
     while(1)
     {
 	printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-	if(task0_handle==1)
-	{
-		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-		task0_handle=0;
-		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-		task1_handle=1;
-		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-	}
+	/*
+	 *if(task0_handle==1)
+	 *{
+	 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+	 *        task0_handle=0;
+	 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+	 *        task1_handle=1;
+	 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+	 *}
+	 */
+	task_switch(adr1, adr2);
     }
 }
 
@@ -179,14 +191,17 @@ void task1(void)
 	while(1)
         {
 		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-		if(task1_handle==1)
-		{
-			printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-			task1_handle=0;
-			printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-			task0_handle=1;
-			printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
-		}
+		/*
+		 *if(task1_handle==1)
+		 *{
+		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		 *        task1_handle=0;
+		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		 *        task0_handle=1;
+		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		 *}
+		 */
+		task_switch(adr2, adr1);
 	}
 }
 
@@ -216,10 +231,13 @@ void test_printk(unsigned int r0, unsigned int r1, unsigned r2, unsigned int r3)
 extern void TriggerPendSV();
 void SysTick_Handler(void)
 {
+	return;
 	if(curr_task==0)
 	        next_task=1;
-        else
+        else if(curr_task == 1)
 	        next_task=0;
+	else
+		return;
 	/*printk("%s line %d. next_task = %d.\n", __func__, __LINE__, next_task);*/
 	TriggerPendSV();
 	printk("%s line %d. next_task = %d.\n", __func__, __LINE__, next_task);
