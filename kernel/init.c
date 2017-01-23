@@ -165,6 +165,16 @@ void task1(void*);
 
 extern W_TCB *gpstrTask1Tcb;
 extern W_TCB *gpstrTask2Tcb;
+extern W_TCB *gpstrTask3Tcb;
+W_TCB *gpstrCurrTcb;
+
+void switch_to_target_task(W_TCB* tar)
+{
+	STACKREG *p = &gpstrCurrTcb->strStackReg;
+	gpstrCurrTcb = tar;
+
+	task_switch(p, &tar->strStackReg);
+}
 void task0(void* p) 
 { 
 
@@ -181,7 +191,7 @@ void task0(void* p)
 	 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
 	 *}
 	 */
-	task_switch(&gpstrTask1Tcb->strStackReg, &gpstrTask2Tcb->strStackReg);
+	switch_to_target_task(gpstrTask2Tcb);
     }
 }
 
@@ -200,7 +210,26 @@ void task1(void* p)
 		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
 		 *}
 		 */
-		task_switch(&gpstrTask2Tcb->strStackReg, &gpstrTask1Tcb->strStackReg);
+		switch_to_target_task(gpstrTask3Tcb);
+	}
+}
+
+void task2(void* p)
+{
+	while(1)
+        {
+		printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		/*
+		 *if(task1_handle==1)
+		 *{
+		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		 *        task1_handle=0;
+		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		 *        task0_handle=1;
+		 *        printk("%s line %d. handle0 = %d. handle1 = %d.\n", __func__, __LINE__, task0_handle, task1_handle);
+		 *}
+		 */
+		switch_to_target_task(gpstrTask1Tcb);
 	}
 }
 
@@ -245,18 +274,22 @@ void SysTick_Handler(void)
 #define TASKSTACK  1024
 W_TCB *gpstrTask1Tcb;
 W_TCB *gpstrTask2Tcb;
+W_TCB *gpstrTask3Tcb;
 unsigned int gauiTask1Stack[TASKSTACK];
 unsigned int gauiTask2Stack[TASKSTACK];
+unsigned int gauiTask3Stack[TASKSTACK];
 unsigned int * TEST_GetTaskInitSp(unsigned char task)
 {
 	if(1 == task)
 	{
 		return gauiTask1Stack + TASKSTACK;
 	}
-	else
+	else if(2 == task)
 	{
 		return gauiTask2Stack + TASKSTACK;
 	}
+	else
+		return gauiTask3Stack + TASKSTACK;
 }
   
 W_TCB *WLX_TaskInit(VFUNC vfFuncPointer, unsigned int *puiTaskStack)
@@ -358,10 +391,12 @@ static void _main(void *unused1, void *unused2, void *unused3)
  *        task_switch(dumy, adr1);
  */
 
-	 gpstrTask1Tcb = WLX_TaskInit(task0, TEST_GetTaskInitSp(1));
-	 gpstrTask2Tcb = WLX_TaskInit(task1, TEST_GetTaskInitSp(2));
+	gpstrTask1Tcb = WLX_TaskInit(task0, TEST_GetTaskInitSp(1));
+	gpstrTask2Tcb = WLX_TaskInit(task1, TEST_GetTaskInitSp(2));
+	gpstrTask3Tcb = WLX_TaskInit(task2, TEST_GetTaskInitSp(3));
 
-	 switch2task(&gpstrTask1Tcb->strStackReg);
+	gpstrCurrTcb = gpstrTask1Tcb;
+	switch2task(&gpstrTask1Tcb->strStackReg);
 	while(1);
 	extern void main(void);
 
